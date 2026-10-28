@@ -74,8 +74,10 @@ const MAX_TOKENS            = 8192;
 const RATE_LIMIT_DELAY_MS   = 2500;  // pause between requests on free tier
 const DEFAULT_MODEL_TIMEOUT_MS = 120_000;
 const parseTimeoutOverride = (val) => {
-  if (!val) return null;
-  const parsed = Number.parseInt(val, 10);
+  if (typeof val !== 'string') return null;
+  const trimmed = val.trim();
+  if (!/^\d+$/.test(trimmed)) return null;
+  const parsed = Number.parseInt(trimmed, 10);
   return Number.isFinite(parsed) && parsed > 0 ? parsed : null;
 };
 const MODEL_TIMEOUT_MS =

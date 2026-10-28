@@ -525,7 +525,7 @@ test('MODEL_TIMEOUT_MS falls back to 120000ms on invalid or non-positive environ
   const origOpenRouter = process.env.OPENROUTER_TIMEOUT_MS;
   delete process.env.OPENROUTER_TIMEOUT_MS;
 
-  const invalidValues = ['abc', '-500', '0', 'NaN', 'Infinity'];
+  const invalidValues = ['abc', '-500', '0', 'NaN', 'Infinity', '1e3', '10.5', '120abc'];
   try {
     for (const val of invalidValues) {
       process.env.CAREER_OPS_TIMEOUT_MS = val;
@@ -533,6 +533,13 @@ test('MODEL_TIMEOUT_MS falls back to 120000ms on invalid or non-positive environ
       const runner = await import(runnerUrl);
       assert.equal(runner.MODEL_TIMEOUT_MS, 120000, `Expected 120000 fallback for value: "${val}", got: ${runner.MODEL_TIMEOUT_MS}`);
     }
+
+    // Explicit test for 1e3 partial override rejection falling back to 120000ms
+    delete process.env.OPENROUTER_TIMEOUT_MS;
+    process.env.CAREER_OPS_TIMEOUT_MS = '1e3';
+    const runnerUrl1e3 = `${pathToFileURL(join(ROOT, 'openrouter-runner.mjs')).href}?test=timeout-1e3-${Date.now()}`;
+    const runner1e3 = await import(runnerUrl1e3);
+    assert.equal(runner1e3.MODEL_TIMEOUT_MS, 120000, 'Expected 1e3 to be rejected and fall back to 120000ms default');
 
     // Invalid CAREER_OPS_TIMEOUT_MS falls back to valid OPENROUTER_TIMEOUT_MS
     process.env.CAREER_OPS_TIMEOUT_MS = 'not-a-number';
