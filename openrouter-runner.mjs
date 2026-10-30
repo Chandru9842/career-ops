@@ -636,16 +636,21 @@ export function stripToolInstructions(text) {
 
 export function buildSystemPrompt(modeContent, ctx, { evaluate = false } = {}) {
   const languageInstruction = outputLanguageInstruction(parseOutputLanguage(ctx.profile));
+
   const executionBoundary = [
     '═══════════════════════════════════════════════════════',
     'CRITICAL OPERATING RULES FOR THIS SESSION',
     '═══════════════════════════════════════════════════════',
-    '1. You are a standalone evaluation report writer, NOT an interactive tool-using CLI agent.',
+    evaluate
+      ? '1. You are a standalone evaluation report writer, NOT an interactive tool-using CLI agent.'
+      : '1. You generate application form answers from the supplied evaluation report, NOT an interactive tool-using CLI agent.',
     '2. You do NOT have access to WebSearch, Playwright, bash, file-writing, or any external tools.',
     '3. Do NOT emit function calls, tool calls (<tool_call>, <dots_function_call>, <|tool_call_start|>), JSON tool requests, or XML invocation tags.',
     '4. Do NOT output shell commands or code snippets asking to execute tools (such as browser-extract, reserve-report-num, curl, or bash).',
     '5. All needed job description text and candidate data are already provided below.',
-    '6. Generate the complete, standalone Markdown evaluation report covering Blocks A through G directly.',
+    ...(evaluate ? [
+      '6. Generate the complete, standalone Markdown evaluation report covering Blocks A through G directly.',
+    ] : []),
     '═══════════════════════════════════════════════════════',
   ].join('\n');
 
