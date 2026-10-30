@@ -30,6 +30,7 @@ import {
   formatReportNumber, releaseReportNumbers, reserveReportNumbers,
 } from './reserve-report-num.mjs';
 import { TokenAccumulator, formatBreakdown, normalizeOpenAIUsage } from './utils/token-tracker.mjs';
+import { anonymizeContext } from './utils/privacy-filter.mjs';
 import { DEFAULT_USER_AGENT } from './user-agent.mjs';
 import { buildTitleFilter } from './title-keywords.mjs';
 import { appendToPipeline, appendToScanHistory, atomicWriteFile } from './scan.mjs';
@@ -286,7 +287,13 @@ async function loadFreeModels() {
 
     freeModels = list.sort((a, b) => {
       const diff = priorityOf(a) - priorityOf(b);
-      return diff !== 0 ? diff : a.localeCompare(b);
+      if (diff !== 0) return diff;
+      if (providerOf(a) === 'minimax' && providerOf(b) === 'minimax') {
+        const flash = 'minimax/minimax-m3.1-flash:free';
+        if (a === flash) return b === flash ? 0 : -1;
+        if (b === flash) return 1;
+      }
+      return a.localeCompare(b);
     });
 
     console.log(`[models] ${freeModels.length} free models loaded from OpenRouter API.`);
@@ -563,12 +570,14 @@ export {
 // Context loading
 // ---------------------------------------------------------------------------
 function loadContext() {
-  return {
-    cv: readFile('cv.md') ?? 'CV not found.',
-    profile: readProfile() ?? '',
-    shared: readSystemFile('modes/_shared.md') ?? '',
-    profileMode: readFile('modes/_profile.md') ?? '',
-  };
+  // Opt-in (privacy.redact_contact_info in config/profile.yml): keep name and
+  // contact details out of the prompt sent to the model.
+  return anonymizeContext({
+    cv:          readFile('cv.md')               ?? 'CV not found.',
+    profile:     readProfile()                   ?? '',
+    shared:      readSystemFile('modes/_shared.md') ?? '',
+    profileMode: readFile('modes/_profile.md')   ?? '',
+  });
 }
 
 // The mode files are written for Claude Code, which has Playwright, WebFetch,
