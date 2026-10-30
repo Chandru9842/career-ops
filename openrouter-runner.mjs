@@ -73,14 +73,17 @@ const OPENROUTER_MODELS_URL = 'https://openrouter.ai/api/v1/models';
 const MAX_TOKENS = 8192;
 const RATE_LIMIT_DELAY_MS = 2500;  // pause between requests on free tier
 const DEFAULT_MODEL_TIMEOUT_MS = 120_000;
+// setTimeout() treats delays above 2^31-1 ms as 1 ms, so larger overrides are rejected.
+const MAX_TIMEOUT_MS = 2_147_483_647;
 const parseTimeoutOverride = (val) => {
   if (typeof val !== 'string') return null;
   const trimmed = val.trim();
   if (!/^\d+$/.test(trimmed)) return null;
   const parsed = Number.parseInt(trimmed, 10);
-  return Number.isFinite(parsed) && parsed > 0 ? parsed : null;
+  return Number.isSafeInteger(parsed) && parsed > 0 && parsed <= MAX_TIMEOUT_MS ? parsed : null;
 };
-const MODEL_TIMEOUT_MS =
+// Resolved on each call (not at import) so overrides loaded later from .env apply.
+const getModelTimeoutMs = () =>
   parseTimeoutOverride(process.env.CAREER_OPS_TIMEOUT_MS) ??
   parseTimeoutOverride(process.env.OPENROUTER_TIMEOUT_MS) ??
   DEFAULT_MODEL_TIMEOUT_MS;
@@ -399,7 +402,8 @@ async function callOpenRouter(systemPrompt, userMessage) {
       max_tokens: MAX_TOKENS,
     });
     const ctrl = new AbortController();
-    const timerId = setTimeout(() => ctrl.abort(), MODEL_TIMEOUT_MS);
+    const timeoutMs = getModelTimeoutMs();
+    const timerId = setTimeout(() => ctrl.abort(), timeoutMs);
     try {
       const resp = await fetch(OPENROUTER_API_URL, {
         method: 'POST',
@@ -427,7 +431,7 @@ async function callOpenRouter(systemPrompt, userMessage) {
       const usage = normalizeOpenAIUsage(data.usage);
       return { content, usage };
     } catch (e) {
-      if (e.name === 'AbortError') throw new Error(`Pinned model timed out after ${MODEL_TIMEOUT_MS / 1000}s`);
+      if (e.name === 'AbortError') throw new Error(`Pinned model timed out after ${timeoutMs / 1000}s`);
       throw e;
     } finally {
       clearTimeout(timerId);
@@ -462,7 +466,8 @@ async function callOpenRouter(systemPrompt, userMessage) {
       });
 
       const controller = new AbortController();
-      const timerId = setTimeout(() => controller.abort(), MODEL_TIMEOUT_MS);
+      const timeoutMs = getModelTimeoutMs();
+      const timerId = setTimeout(() => controller.abort(), timeoutMs);
       let data;
       try {
         const resp = await fetch(OPENROUTER_API_URL, {
@@ -485,7 +490,7 @@ async function callOpenRouter(systemPrompt, userMessage) {
         }
         data = await resp.json();
       } catch (e) {
-        if (e.name === 'AbortError') throw new Error(`Timeout after ${MODEL_TIMEOUT_MS / 1000}s`);
+        if (e.name === 'AbortError') throw new Error(`Timeout after ${timeoutMs / 1000}s`);
         throw e;
       } finally {
         clearTimeout(timerId);
@@ -549,7 +554,7 @@ export {
   callOpenRouter,
   rateLimitCounts,
   blacklistedModels,
-  MODEL_TIMEOUT_MS,
+  getModelTimeoutMs,
   cmdEvaluate,
   cmdPipeline,
 };

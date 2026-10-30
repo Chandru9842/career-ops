@@ -16,7 +16,7 @@ const {
   validateEvaluationResponse,
   isDailyQuotaExhausted,
   QuotaExhaustedError,
-  MODEL_TIMEOUT_MS,
+  getModelTimeoutMs,
 } = await import(pathToFileURL(join(ROOT, 'openrouter-runner.mjs')).href);
 
 const VALID_EVALUATION = `
@@ -504,90 +504,78 @@ test('cmdPipeline with { one: true } processes exactly one job without running s
 
 // ── 8. Upstream Compatibility & Timeout Defaults ──────────────────────────
 
-test('MODEL_TIMEOUT_MS defaults to 120000ms when no env override is set', async () => {
-  const origOps = process.env.CAREER_OPS_TIMEOUT_MS;
-  const origOpenRouter = process.env.OPENROUTER_TIMEOUT_MS;
-  delete process.env.CAREER_OPS_TIMEOUT_MS;
-  delete process.env.OPENROUTER_TIMEOUT_MS;
+function withTimeoutEnv(env, fn) {
+  const keys = ['CAREER_OPS_TIMEOUT_MS', 'OPENROUTER_TIMEOUT_MS'];
+  const saved = Object.fromEntries(keys.map((k) => [k, process.env[k]]));
   try {
-    const runnerUrl = `${pathToFileURL(join(ROOT, 'openrouter-runner.mjs')).href}?test=timeout-default-${Date.now()}`;
-    const runner = await import(runnerUrl);
-    assert.equal(runner.MODEL_TIMEOUT_MS, 120000);
-  } finally {
-    if (origOps === undefined) delete process.env.CAREER_OPS_TIMEOUT_MS;
-    else process.env.CAREER_OPS_TIMEOUT_MS = origOps;
-    if (origOpenRouter === undefined) delete process.env.OPENROUTER_TIMEOUT_MS;
-    else process.env.OPENROUTER_TIMEOUT_MS = origOpenRouter;
-  }
-});
-
-test('MODEL_TIMEOUT_MS honors CAREER_OPS_TIMEOUT_MS environment override', async () => {
-  const origOps = process.env.CAREER_OPS_TIMEOUT_MS;
-  const origOpenRouter = process.env.OPENROUTER_TIMEOUT_MS;
-  delete process.env.OPENROUTER_TIMEOUT_MS;
-  process.env.CAREER_OPS_TIMEOUT_MS = '60000';
-  try {
-    const runnerUrl = `${pathToFileURL(join(ROOT, 'openrouter-runner.mjs')).href}?test=timeout-career-ops-${Date.now()}`;
-    const runner = await import(runnerUrl);
-    assert.equal(runner.MODEL_TIMEOUT_MS, 60000);
-  } finally {
-    if (origOps === undefined) delete process.env.CAREER_OPS_TIMEOUT_MS;
-    else process.env.CAREER_OPS_TIMEOUT_MS = origOps;
-    if (origOpenRouter === undefined) delete process.env.OPENROUTER_TIMEOUT_MS;
-    else process.env.OPENROUTER_TIMEOUT_MS = origOpenRouter;
-  }
-});
-
-test('MODEL_TIMEOUT_MS honors OPENROUTER_TIMEOUT_MS environment override', async () => {
-  const origOps = process.env.CAREER_OPS_TIMEOUT_MS;
-  const origOpenRouter = process.env.OPENROUTER_TIMEOUT_MS;
-  delete process.env.CAREER_OPS_TIMEOUT_MS;
-  process.env.OPENROUTER_TIMEOUT_MS = '75000';
-  try {
-    const runnerUrl = `${pathToFileURL(join(ROOT, 'openrouter-runner.mjs')).href}?test=timeout-openrouter-${Date.now()}`;
-    const runner = await import(runnerUrl);
-    assert.equal(runner.MODEL_TIMEOUT_MS, 75000);
-  } finally {
-    if (origOps === undefined) delete process.env.CAREER_OPS_TIMEOUT_MS;
-    else process.env.CAREER_OPS_TIMEOUT_MS = origOps;
-    if (origOpenRouter === undefined) delete process.env.OPENROUTER_TIMEOUT_MS;
-    else process.env.OPENROUTER_TIMEOUT_MS = origOpenRouter;
-  }
-});
-
-test('MODEL_TIMEOUT_MS falls back to 120000ms on invalid or non-positive environment overrides', async () => {
-  const origOps = process.env.CAREER_OPS_TIMEOUT_MS;
-  const origOpenRouter = process.env.OPENROUTER_TIMEOUT_MS;
-  delete process.env.OPENROUTER_TIMEOUT_MS;
-
-  const invalidValues = ['abc', '-500', '0', 'NaN', 'Infinity', '1e3', '10.5', '120abc'];
-  try {
-    for (const val of invalidValues) {
-      process.env.CAREER_OPS_TIMEOUT_MS = val;
-      const runnerUrl = `${pathToFileURL(join(ROOT, 'openrouter-runner.mjs')).href}?test=timeout-invalid-${encodeURIComponent(val)}-${Date.now()}`;
-      const runner = await import(runnerUrl);
-      assert.equal(runner.MODEL_TIMEOUT_MS, 120000, `Expected 120000 fallback for value: "${val}", got: ${runner.MODEL_TIMEOUT_MS}`);
+    for (const k of keys) {
+      if (env[k] === undefined) delete process.env[k];
+      else process.env[k] = env[k];
     }
-
-    // Explicit test for 1e3 partial override rejection falling back to 120000ms
-    delete process.env.OPENROUTER_TIMEOUT_MS;
-    process.env.CAREER_OPS_TIMEOUT_MS = '1e3';
-    const runnerUrl1e3 = `${pathToFileURL(join(ROOT, 'openrouter-runner.mjs')).href}?test=timeout-1e3-${Date.now()}`;
-    const runner1e3 = await import(runnerUrl1e3);
-    assert.equal(runner1e3.MODEL_TIMEOUT_MS, 120000, 'Expected 1e3 to be rejected and fall back to 120000ms default');
-
-    // Invalid CAREER_OPS_TIMEOUT_MS falls back to valid OPENROUTER_TIMEOUT_MS
-    process.env.CAREER_OPS_TIMEOUT_MS = 'not-a-number';
-    process.env.OPENROUTER_TIMEOUT_MS = '85000';
-    const runnerUrl = `${pathToFileURL(join(ROOT, 'openrouter-runner.mjs')).href}?test=timeout-fallback-openrouter-${Date.now()}`;
-    const runner = await import(runnerUrl);
-    assert.equal(runner.MODEL_TIMEOUT_MS, 85000);
+    return fn();
   } finally {
-    if (origOps === undefined) delete process.env.CAREER_OPS_TIMEOUT_MS;
-    else process.env.CAREER_OPS_TIMEOUT_MS = origOps;
-    if (origOpenRouter === undefined) delete process.env.OPENROUTER_TIMEOUT_MS;
-    else process.env.OPENROUTER_TIMEOUT_MS = origOpenRouter;
+    for (const k of keys) {
+      if (saved[k] === undefined) delete process.env[k];
+      else process.env[k] = saved[k];
+    }
   }
+}
+
+test('getModelTimeoutMs defaults to 120000ms when no env override is set', () => {
+  withTimeoutEnv({}, () => {
+    assert.equal(getModelTimeoutMs(), 120000);
+  });
+});
+
+test('getModelTimeoutMs honors CAREER_OPS_TIMEOUT_MS environment override', () => {
+  withTimeoutEnv({ CAREER_OPS_TIMEOUT_MS: '60000' }, () => {
+    assert.equal(getModelTimeoutMs(), 60000);
+  });
+});
+
+test('getModelTimeoutMs honors OPENROUTER_TIMEOUT_MS environment override', () => {
+  withTimeoutEnv({ OPENROUTER_TIMEOUT_MS: '75000' }, () => {
+    assert.equal(getModelTimeoutMs(), 75000);
+  });
+});
+
+test('getModelTimeoutMs reads the env at call time, so a later .env override applies', () => {
+  withTimeoutEnv({}, () => {
+    // Module is already imported at this point; the override is set afterwards,
+    // the way loadEnvFile() does in the CLI entry point.
+    assert.equal(getModelTimeoutMs(), 120000);
+    process.env.CAREER_OPS_TIMEOUT_MS = '45000';
+    assert.equal(getModelTimeoutMs(), 45000);
+  });
+});
+
+test('getModelTimeoutMs falls back to 120000ms on invalid or non-positive environment overrides', () => {
+  const invalidValues = ['abc', '-500', '0', 'NaN', 'Infinity', '1e3', '10.5', '120abc'];
+  for (const val of invalidValues) {
+    withTimeoutEnv({ CAREER_OPS_TIMEOUT_MS: val }, () => {
+      assert.equal(getModelTimeoutMs(), 120000, `Expected 120000 fallback for value: "${val}"`);
+    });
+  }
+
+  // Invalid CAREER_OPS_TIMEOUT_MS falls back to valid OPENROUTER_TIMEOUT_MS
+  withTimeoutEnv({ CAREER_OPS_TIMEOUT_MS: 'not-a-number', OPENROUTER_TIMEOUT_MS: '85000' }, () => {
+    assert.equal(getModelTimeoutMs(), 85000);
+  });
+});
+
+test('getModelTimeoutMs rejects values above the setTimeout limit (2147483647ms)', () => {
+  withTimeoutEnv({ CAREER_OPS_TIMEOUT_MS: '2147483647' }, () => {
+    assert.equal(getModelTimeoutMs(), 2147483647, 'The limit itself is still accepted');
+  });
+  for (const val of ['2147483648', '99999999999', '9007199254740993']) {
+    withTimeoutEnv({ CAREER_OPS_TIMEOUT_MS: val }, () => {
+      assert.equal(getModelTimeoutMs(), 120000, `Expected 120000 fallback for value: "${val}"`);
+    });
+  }
+  // An over-limit CAREER_OPS_TIMEOUT_MS falls through to a valid OPENROUTER_TIMEOUT_MS
+  withTimeoutEnv({ CAREER_OPS_TIMEOUT_MS: '2147483648', OPENROUTER_TIMEOUT_MS: '90000' }, () => {
+    assert.equal(getModelTimeoutMs(), 90000);
+  });
 });
 
 test('unreadableJobPage flags 404, bot challenge, and unreadable verdicts', async () => {
