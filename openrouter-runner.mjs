@@ -719,7 +719,7 @@ async function fetchJobPage(url) {
     } catch (e) {
       console.warn(`[fetch] Playwright error: ${e.message} — falling back to plain fetch.`);
     } finally {
-      if (browser) await browser.close().catch(() => { });
+      if (browser) await browser.close().catch(() => {});
     }
     // The browser read the page; a plain fetch would only see less of it.
     if (unreadable) throw new Error(`No job description to evaluate at ${url} (${unreadable})`);
