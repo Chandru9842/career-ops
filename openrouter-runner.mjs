@@ -106,7 +106,7 @@ export function isDailyQuotaExhausted(status, bodyText) {
     lower.includes('daily limit exceeded') ||
     lower.includes('free model daily quota') ||
     lower.includes('per-day limit') ||
-    lower.includes('quota exceeded');
+    lower.includes('daily quota exceeded');
 }
 
 export function validateEvaluationResponse(content) {

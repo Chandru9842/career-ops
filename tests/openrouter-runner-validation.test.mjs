@@ -262,10 +262,12 @@ test('isDailyQuotaExhausted accurately identifies 429 quota exhaustion', () => {
   assert.equal(isDailyQuotaExhausted(429, 'Daily limit exceeded for free tier'), true);
   assert.equal(isDailyQuotaExhausted(429, 'OpenRouter error: free model daily quota reached'), true);
   assert.equal(isDailyQuotaExhausted(429, 'Account per-day limit exceeded'), true);
+  assert.equal(isDailyQuotaExhausted(429, 'Daily quota exceeded'), true);
 
   // Transient rate limit is NOT daily quota exhaustion
   assert.equal(isDailyQuotaExhausted(429, 'Rate limit: 20 requests per minute'), false);
   assert.equal(isDailyQuotaExhausted(429, 'temporarily rate limited, please retry in 5s'), false);
+  assert.equal(isDailyQuotaExhausted(429, 'per-minute quota exceeded'), false);
   assert.equal(isDailyQuotaExhausted(500, 'free-models-per-day'), false);
 });
 
