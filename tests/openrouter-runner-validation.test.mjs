@@ -161,6 +161,41 @@ node browser-extract.mjs https://example.com/job/123 --mode jd
   assert.equal(result.reason, 'shell_command_instruction');
 });
 
+test('rejects node reserve-report-num command instructions while accepting normal evaluation text', () => {
+  const shellCommands = [
+    'node reserve-report-num',
+    'node reserve-report-num.mjs',
+    'node   reserve-report-num.mjs',
+    'node reserve-report-num --count 1',
+    'node reserve-report-num.mjs --release 001',
+    'Please run node reserve-report-num.mjs before proceeding.',
+    '```sh\nnode reserve-report-num\n```',
+  ];
+
+  for (const cmd of shellCommands) {
+    const res = validateEvaluationResponse(cmd);
+    assert.equal(res.ok, false, `Expected rejection for: "${cmd}"`);
+    assert.equal(res.reason, 'shell_command_instruction');
+  }
+
+  // An otherwise complete evaluation containing the command is rejected
+  const embedded = `${VALID_EVALUATION}\nPlease run node reserve-report-num.mjs to reserve a slot.`;
+  const resEmbedded = validateEvaluationResponse(embedded);
+  assert.equal(resEmbedded.ok, false);
+  assert.equal(resEmbedded.reason, 'shell_command_instruction');
+
+  // Normal evaluation text (including mentions of Node.js and report numbering concepts) is accepted
+  const resValid = validateEvaluationResponse(VALID_EVALUATION);
+  assert.equal(resValid.ok, true, `Expected valid evaluation to pass, got: ${resValid.reason}`);
+
+  const normalWithMentions = VALID_EVALUATION.replace(
+    'Backend platform role focusing on distributed systems in Go and Node.js.',
+    'Role involves Node runtime services and reserving report slots as part of platform architecture.'
+  );
+  const resMentions = validateEvaluationResponse(normalWithMentions);
+  assert.equal(resMentions.ok, true, `Expected evaluation with technical mentions to pass, got: ${resMentions.reason}`);
+});
+
 // ── 3. Empty & Incomplete Reports ─────────────────────────────────────────
 
 test('rejects empty or null response', () => {

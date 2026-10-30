@@ -68,10 +68,10 @@ function loadEnvFile() {
 // ---------------------------------------------------------------------------
 // Constants
 // ---------------------------------------------------------------------------
-const OPENROUTER_API_URL    = 'https://openrouter.ai/api/v1/chat/completions';
+const OPENROUTER_API_URL = 'https://openrouter.ai/api/v1/chat/completions';
 const OPENROUTER_MODELS_URL = 'https://openrouter.ai/api/v1/models';
-const MAX_TOKENS            = 8192;
-const RATE_LIMIT_DELAY_MS   = 2500;  // pause between requests on free tier
+const MAX_TOKENS = 8192;
+const RATE_LIMIT_DELAY_MS = 2500;  // pause between requests on free tier
 const DEFAULT_MODEL_TIMEOUT_MS = 120_000;
 const parseTimeoutOverride = (val) => {
   if (typeof val !== 'string') return null;
@@ -99,10 +99,10 @@ export function isDailyQuotaExhausted(status, bodyText) {
   if (status !== 429) return false;
   const lower = String(bodyText || '').toLowerCase();
   return lower.includes('free-models-per-day') ||
-         lower.includes('daily limit exceeded') ||
-         lower.includes('free model daily quota') ||
-         lower.includes('per-day limit') ||
-         lower.includes('quota exceeded');
+    lower.includes('daily limit exceeded') ||
+    lower.includes('free model daily quota') ||
+    lower.includes('per-day limit') ||
+    lower.includes('quota exceeded');
 }
 
 export function validateEvaluationResponse(content) {
@@ -138,16 +138,16 @@ export function validateEvaluationResponse(content) {
 
   // 2. Reject JSON tool invocation requests
   if (/^\s*\[?\s*\{\s*"tool"\s*:/i.test(text) ||
-      /\{\s*"tool"\s*:\s*"(?:browser_navigate|browser_snapshot|bash|playwright)"/i.test(text) ||
-      /\{\s*"command"\s*:\s*"[^"]*"\s*,\s*"description"\s*:/i.test(text)) {
+    /\{\s*"tool"\s*:\s*"(?:browser_navigate|browser_snapshot|bash|playwright)"/i.test(text) ||
+    /\{\s*"command"\s*:\s*"[^"]*"\s*,\s*"description"\s*:/i.test(text)) {
     return { ok: false, reason: 'json_tool_request' };
   }
 
   // 3. Reject browser commands / session placeholders
   if (/(?:browser_navigate|browser_snapshot)\s*[<{("']/i.test(text) ||
-      /(?:<arg_value>|["']url["']:\s*["'])https?:\/\/[^\s"']+.*?browser_navigate/i.test(text) ||
-      /^\s*Browser session opened\./im.test(text) ||
-      /^\s*visiting URL:\s*http/im.test(text)) {
+    /(?:<arg_value>|["']url["']:\s*["'])https?:\/\/[^\s"']+.*?browser_navigate/i.test(text) ||
+    /^\s*Browser session opened\./im.test(text) ||
+    /^\s*visiting URL:\s*http/im.test(text)) {
     return { ok: false, reason: 'browser_command_instruction' };
   }
 
@@ -164,9 +164,9 @@ export function validateEvaluationResponse(content) {
 
   // 5. Reject shell command instructions presented instead of report
   if (/```(?:bash|sh)\s*\n\s*(?:node browser-extract\.mjs|cat \/workspace\/)/i.test(text) ||
-      /\\node reserve-report-num/i.test(text) ||
-      /node browser-extract\.mjs.*--mode jd/i.test(text) ||
-      /cat \/workspace\/data\/blacklist/i.test(text)) {
+    /\bnode\s+reserve-report-num(?:\.mjs)?\b/i.test(text) ||
+    /node browser-extract\.mjs.*--mode jd/i.test(text) ||
+    /cat \/workspace\/data\/blacklist/i.test(text)) {
     return { ok: false, reason: 'shell_command_instruction' };
   }
 
@@ -194,9 +194,9 @@ export function validateEvaluationResponse(content) {
 
   // 8. Require Score or Decision
   const hasScoreOrDecision = /(?:^|\n)\s*\*?\*?\s*(?:Score|Puntuaci[oó]n|Note|Bewertung)\s*:\*?\*?\s*\d/im.test(text) ||
-                             /(?:^|\n)\s*\*?\*?\s*(?:Decision|D[eé]cision|Entscheidung)\s*:\*?\*?\s*\*?\*?(?:Apply|Consider|Research first|Skip)/im.test(text) ||
-                             /(?:^|\n)\s*score:\s*\d+(?:\.\d+)?/im.test(text) ||
-                             /(?:^|\n)\s*final_decision:\s*["']?(?:Apply|Consider|Research first|Skip)/im.test(text);
+    /(?:^|\n)\s*\*?\*?\s*(?:Decision|D[eé]cision|Entscheidung)\s*:\*?\*?\s*\*?\*?(?:Apply|Consider|Research first|Skip)/im.test(text) ||
+    /(?:^|\n)\s*score:\s*\d+(?:\.\d+)?/im.test(text) ||
+    /(?:^|\n)\s*final_decision:\s*["']?(?:Apply|Consider|Research first|Skip)/im.test(text);
 
   if (!hasScoreOrDecision) {
     return { ok: false, reason: 'missing_score_or_decision' };
@@ -227,7 +227,7 @@ let modelIndex = 0;      // current position in rotation
 // Persistent blacklist file — survives process restarts. data/ is User Layer
 // (gitignored runtime state), so it follows the data root like every other
 // data/ path this runner touches.
-const BLACKLIST_DIR  = path.join(getCareerOpsRoot(), 'data');
+const BLACKLIST_DIR = path.join(getCareerOpsRoot(), 'data');
 const BLACKLIST_FILE = path.join(BLACKLIST_DIR, 'model-blacklist.json');
 function loadPersistedBlacklist() {
   try {
@@ -239,7 +239,7 @@ function saveBlacklist(set) {
   try {
     fs.mkdirSync(BLACKLIST_DIR, { recursive: true });
     fs.writeFileSync(BLACKLIST_FILE, JSON.stringify([...set], null, 2), 'utf-8');
-  } catch {}
+  } catch { }
 }
 
 // Models that failed permanently (403, timeout, persistent 429) — never retry
@@ -293,7 +293,7 @@ async function loadFreeModels() {
     throw new Error(
       `[models] Failed to fetch free model list: ${reason}. ` +
       (hasKey ? 'Check that your API key is valid and that network access to OpenRouter is available.'
-               : 'OPENROUTER_API_KEY is not set — copy .env.example to .env and add your key.')
+        : 'OPENROUTER_API_KEY is not set — copy .env.example to .env and add your key.')
     );
   }
 
@@ -405,9 +405,9 @@ async function callOpenRouter(systemPrompt, userMessage) {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${key}`,
-          'Content-Type':  'application/json',
-          'HTTP-Referer':  'https://github.com/career-ops-hq/career-ops',
-          'X-Title':       'career-ops',
+          'Content-Type': 'application/json',
+          'HTTP-Referer': 'https://github.com/career-ops-hq/career-ops',
+          'X-Title': 'career-ops',
         },
         body,
         signal: ctrl.signal,
@@ -469,9 +469,9 @@ async function callOpenRouter(systemPrompt, userMessage) {
           method: 'POST',
           headers: {
             'Authorization': `Bearer ${key}`,
-            'Content-Type':  'application/json',
-            'HTTP-Referer':  'https://github.com/career-ops-hq/career-ops',
-            'X-Title':       'career-ops',
+            'Content-Type': 'application/json',
+            'HTTP-Referer': 'https://github.com/career-ops-hq/career-ops',
+            'X-Title': 'career-ops',
           },
           body,
           signal: controller.signal,
@@ -510,9 +510,9 @@ async function callOpenRouter(systemPrompt, userMessage) {
       lastError = e;
       const msg = e.message.split('\n')[0];
 
-      const is403     = msg.includes('HTTP 403');
+      const is403 = msg.includes('HTTP 403');
       const isTimeout = msg.startsWith('Timeout');
-      const is429     = msg.includes('HTTP 429') || msg.includes('rate-li') || msg.includes('rate limit') || msg.includes('temporarily rate');
+      const is429 = msg.includes('HTTP 429') || msg.includes('rate-li') || msg.includes('rate limit') || msg.includes('temporarily rate');
       if (is403) {
         blacklistedModels.add(model);
         saveBlacklist(blacklistedModels);
@@ -559,10 +559,10 @@ export {
 // ---------------------------------------------------------------------------
 function loadContext() {
   return {
-    cv:          readFile('cv.md')               ?? 'CV not found.',
-    profile:     readProfile()                   ?? '',
-    shared:      readSystemFile('modes/_shared.md') ?? '',
-    profileMode: readFile('modes/_profile.md')   ?? '',
+    cv: readFile('cv.md') ?? 'CV not found.',
+    profile: readProfile() ?? '',
+    shared: readSystemFile('modes/_shared.md') ?? '',
+    profileMode: readFile('modes/_profile.md') ?? '',
   };
 }
 
@@ -719,7 +719,7 @@ async function fetchJobPage(url) {
     } catch (e) {
       console.warn(`[fetch] Playwright error: ${e.message} — falling back to plain fetch.`);
     } finally {
-      if (browser) await browser.close().catch(() => {});
+      if (browser) await browser.close().catch(() => { });
     }
     // The browser read the page; a plain fetch would only see less of it.
     if (unreadable) throw new Error(`No job description to evaluate at ${url} (${unreadable})`);
@@ -790,9 +790,9 @@ function readPipeline() {
     if (m) {
       const parts = m[1].split(' | ');
       pending.push({
-        url:     parts[0]?.trim() ?? '',
+        url: parts[0]?.trim() ?? '',
         company: parts[1]?.trim() ?? 'Unknown',
-        role:    parts[2]?.trim() ?? 'Unknown',
+        role: parts[2]?.trim() ?? 'Unknown',
       });
     }
   }
@@ -1005,15 +1005,15 @@ async function cmdEvaluate(input, ctx) {
 
   try {
     // Save report
-    const today   = localToday();
-    const num     = reservedNumbers[0];
-    const slug    = extractCompanySlug(jdText, typeof input === 'string' ? input : null);
-    const numStr  = formatReportNumber(num);
+    const today = localToday();
+    const num = reservedNumbers[0];
+    const slug = extractCompanySlug(jdText, typeof input === 'string' ? input : null);
+    const numStr = formatReportNumber(num);
     const relPath = `reports/${numStr}-${slug}-${today}.md`;
 
     // Extract Legitimacy from LLM output or fall back to placeholder
     const legitMatch = result.match(/\*\*Legitimacy:\*\*\s*([^\n]+)/);
-    const legitLine  = legitMatch ? `**Legitimacy:** ${legitMatch[1].trim()}` : '**Legitimacy:** unconfirmed';
+    const legitLine = legitMatch ? `**Legitimacy:** ${legitMatch[1].trim()}` : '**Legitimacy:** unconfirmed';
     writeFile(relPath, `**URL:** ${input || '(pasted)'}\n${legitLine}\n\n${withJdArchiveSection(result, archiveText)}`);
 
     // Capture the DENOMINATOR when the model writes one. The old pattern took
@@ -1031,17 +1031,17 @@ async function cmdEvaluate(input, ctx) {
     // matched 3/4 axes`) is refused as N/A rather than guessed at. That is the
     // trade the shared helper already documents and the gemini path already
     // pins: N/A is recoverable, a wrong score is not.
-    const scoreMatch  = result.match(/(?:score|puntuaci[oó]n)[^\d]*(\d+(?:\.\d+)?[^\r\n]*)/i);
+    const scoreMatch = result.match(/(?:score|puntuaci[oó]n)[^\d]*(\d+(?:\.\d+)?[^\r\n]*)/i);
     // An unparseable score used to become the EMPTY string, and merge-tracker
     // refuses a blank required cell ("use the documented sentinel rather than a
     // blank cell") -- so the evaluation was skipped whole, the same loss #3796
     // documents for the drifted copies. The shared helper returns the `N/A`
     // sentinel (#1799), which merges as an unscored row instead of as nothing.
-    const scoreStr    = normalizedTrackerScore(scoreMatch ? scoreMatch[1] : '');
+    const scoreStr = normalizedTrackerScore(scoreMatch ? scoreMatch[1] : '');
     const companyName = slug.replace(/-/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
-    const reportLink  = `[${numStr}](reports/${numStr}-${slug}-${today}.md)`;
-    const tsvLine     = `${num}\t${today}\t${companyName}\t(see report)\tEvaluated\t${scoreStr}\t❌\t${reportLink}\t\n`;
-    const tsvFile     = `batch/tracker-additions/or-${numStr}-${slug}.tsv`;
+    const reportLink = `[${numStr}](reports/${numStr}-${slug}-${today}.md)`;
+    const tsvLine = `${num}\t${today}\t${companyName}\t(see report)\tEvaluated\t${scoreStr}\t❌\t${reportLink}\t\n`;
+    const tsvFile = `batch/tracker-additions/or-${numStr}-${slug}.tsv`;
     // Header row, then the single data row. merge-tracker.mjs resolves the
     // fields by NAME when the header is present (#3517), so this row cannot be
     // read into the wrong columns. (Headerless files still work; they are the
@@ -1179,7 +1179,7 @@ async function cmdApply(ref, ctx) {
 // Only run the CLI when invoked directly (`node openrouter-runner.mjs ...`), so the
 // module can be imported (e.g. by test-all.mjs) without executing a command.
 const invokedDirectly = isMainModule(import.meta.url);
-const [,, command, ...args] = invokedDirectly ? process.argv : [];
+const [, , command, ...args] = invokedDirectly ? process.argv : [];
 if (invokedDirectly) loadEnvFile();
 const ctx = invokedDirectly ? loadContext() : null;
 
